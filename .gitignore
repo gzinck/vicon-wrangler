@@ -1,0 +1,5 @@
+# Text editor files
+*.swp
+
+# Build output dir
+build
