@@ -8,11 +8,11 @@ CPP_FLAGS=-L$(LIBS_DIR) -l ViconDataStreamSDK_CPP \
 	-I include -std=c++11
 
 
-adapter: ViconWrangler.cpp output
+all: ViconWrangler.cpp build
 	$(CC) ViconWrangler.cpp $(CPP_FLAGS) \
 		-o $(OUT_DIR)/ViconWrangler
 
-output:
+build:
 	mkdir -p $(OUT_DIR)
 	cp $(LIBS_DIR)/* $(OUT_DIR)
 
