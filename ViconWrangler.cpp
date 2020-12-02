@@ -9,11 +9,7 @@
 #include <string.h>
 #include <iostream>
 #include <chrono>
-#include <ctime>
-
-#ifndef MICRO
-#define MICRO 1000000 // Number of nanoseconds per second
-#endif
+#include <set>
 
 // For sleep() or Sleep()
 #ifdef WIN32
@@ -21,6 +17,22 @@
 #else
 	#include <unistd.h> // For nanosleep()
 #endif // WIN32
+
+#ifndef MICRO
+#define MICRO 1000000 // Number of nanoseconds per second
+#endif
+
+/** The subjects to retreive from the Vicon datastream */
+std::set<std::string> subjects = {"Active Wand (Origin Tracking)"};
+
+/**
+ * Checks if the subject is one we want to track.
+ *
+ * @param value A potential subject's name.
+ */
+bool isSubject(std::string &value) {
+	return subjects.count(value) > 0;
+}
 
 using namespace ViconDataStreamSDK::CPP;
 
@@ -61,7 +73,8 @@ long long getFrameTime(double latencySecs) {
 int main(int argc, char* argv[]) {
 	std::string host;
 	if (argc > 1) host = argv[1];
-	else host = "localhost:801";
+	//else host = "localhost:801";
+	else host = "192.168.1.105:801";
 	std::cout << "Connecting to " << host << std::endl;
 
 	ViconDataStreamSDK::CPP::Client client;
@@ -95,6 +108,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "Connection successful!" << std::endl;
 
 	client.SetStreamMode(StreamMode::ServerPush);
+    client.EnableMarkerData();
 
 	while (true) {
 		std::cout << "Waiting for a new frame" << std::endl;
@@ -116,5 +130,28 @@ int main(int argc, char* argv[]) {
 		std::cout << "Latency: " << client.GetLatencyTotal().Total << "s" << std::endl;
 		std::cout << "Frame rate: " << client.GetFrameRate().FrameRateHz << std::endl;
 		std::cout << "Frame time: " << frameTime << std::endl;
+
+		// Get the subjects we want
+		int numSubjects = client.GetSubjectCount().SubjectCount;
+		for (int subjectIndex = 0; subjectIndex < numSubjects; subjectIndex++) {
+			std::string subjectName = client.GetSubjectName(subjectIndex).SubjectName;
+			std::cout << "Subject name: " << subjectName << std::endl;
+			if (isSubject(subjectName)) {
+				std::cout << "Processing subject: " << subjectName << std::endl;
+				// Collect the marker information
+				int numMarkers = client.GetMarkerCount(subjectName).MarkerCount;
+				for (int markerIndex = 0; markerIndex < numMarkers; markerIndex++) {
+					std::string markerName = client.GetMarkerName(subjectName, markerIndex).MarkerName;
+					Output_GetMarkerGlobalTranslation translation = client.GetMarkerGlobalTranslation(subjectName, markerName);
+
+					std::cout << "Marker " << markerIndex << " - "
+						<< markerName << " ("
+						<< translation.Translation[0] << ", "
+						<< translation.Translation[1] << ", "
+						<< translation.Translation[2] << ")"
+						<< std::endl;
+				}
+			}
+		}
 	}
 }

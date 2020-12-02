@@ -4,7 +4,8 @@ LIBS_DIR=./libs
 OUT_DIR=./build
 
 # Link the dynamic libraries in the ./libs folder
-CPP_FLAGS=-L$(LIBS_DIR) -l ViconDataStreamSDK_CPP -I include
+CPP_FLAGS=-L$(LIBS_DIR) -l ViconDataStreamSDK_CPP \
+	-I include -std=c++11
 
 
 adapter: ViconWrangler.cpp output
