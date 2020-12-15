@@ -6,6 +6,7 @@
 //
 
 #include "DataStreamClient.h"
+#include "Server.h"
 #include <string.h>
 #include <iostream>
 #include <chrono>
@@ -20,6 +21,10 @@
 
 #ifndef MICRO
 #define MICRO 1000000 // Number of nanoseconds per second
+#endif
+
+#ifndef SERVE_PORT
+#define SERVE_PORT 3456
 #endif
 
 /** The subjects to retreive from the Vicon datastream */
@@ -71,6 +76,15 @@ long long getFrameTime(double latencySecs) {
 }
 
 int main(int argc, char* argv[]) {
+	// Set up the server to share our data
+	int servePort;
+	if (argc > 2) servePort = atoi(argv[2]);
+	else servePort = SERVE_PORT;
+
+	server::Server server(SERVE_PORT);
+	server << "You are now connected to the Vicon datastream!";
+
+	// Connect to Vicon datastream
 	std::string host;
 	if (argc > 1) host = argv[1];
 	//else host = "localhost:801";
@@ -111,25 +125,24 @@ int main(int argc, char* argv[]) {
     client.EnableMarkerData();
 
 	while (true) {
-		std::cout << "Waiting for a new frame" << std::endl;
 		while (client.GetFrame().Result != Result::Success) {
+			std::cout << "Waiting for a new frame" << std::endl;
 			// Sleep so we don't overload the CPU.
 #ifdef WIN32
 			Sleep(200);
 #else
 			usleep(200000);
 #endif
-			std::cout << ".";
 		}
 
 		// Stop waiting, record the time
 		long long frameTime = getFrameTime(client.GetLatencyTotal().Total);
-		std::cout << std::endl;
+		server << frameTime << "\n";
 
-		std::cout << "Frame number: " << client.GetFrameNumber().FrameNumber << std::endl;
-		std::cout << "Latency: " << client.GetLatencyTotal().Total << "s" << std::endl;
-		std::cout << "Frame rate: " << client.GetFrameRate().FrameRateHz << std::endl;
-		std::cout << "Frame time: " << frameTime << std::endl;
+		// std::cout << "Frame number: " << client.GetFrameNumber().FrameNumber << std::endl;
+		// std::cout << "Latency: " << client.GetLatencyTotal().Total << "s" << std::endl;
+		// std::cout << "Frame rate: " << client.GetFrameRate().FrameRateHz << std::endl;
+		// std::cout << "Frame time: " << frameTime << std::endl;
 
 		// Get the subjects we want
 		int numSubjects = client.GetSubjectCount().SubjectCount;
@@ -144,14 +157,15 @@ int main(int argc, char* argv[]) {
 					std::string markerName = client.GetMarkerName(subjectName, markerIndex).MarkerName;
 					Output_GetMarkerGlobalTranslation translation = client.GetMarkerGlobalTranslation(subjectName, markerName);
 
-					std::cout << "Marker " << markerIndex << " - "
+					server << "Marker " << markerIndex << " - "
 						<< markerName << " ("
 						<< translation.Translation[0] << ", "
 						<< translation.Translation[1] << ", "
-						<< translation.Translation[2] << ")"
-						<< std::endl;
+						<< translation.Translation[2] << ")\n";
 				}
 			}
 		}
 	}
+
+	return 0;
 }

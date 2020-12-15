@@ -7,9 +7,12 @@ OUT_DIR=./build
 CPP_FLAGS=-L$(LIBS_DIR) -l ViconDataStreamSDK_CPP \
 	-I include -std=c++11
 
+# all: ViconWrangler.cpp
 
-all: ViconWrangler.cpp build
-	$(CC) ViconWrangler.cpp $(CPP_FLAGS) \
+all: build
+	$(CC) ViconWrangler.cpp \
+		Server.cpp \
+		$(CPP_FLAGS) \
 		-o $(OUT_DIR)/ViconWrangler
 
 build:
