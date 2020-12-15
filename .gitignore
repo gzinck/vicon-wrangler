@@ -3,6 +3,7 @@
 
 # Build output dir
 build
+obj
 
 # Vicon docs (they have copyright)
 docs
