@@ -7,3 +7,6 @@ obj
 
 # Vicon docs (they have copyright)
 docs
+
+# websocketpp is pulled from another git repo
+include/websocketpp
