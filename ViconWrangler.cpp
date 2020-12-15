@@ -83,6 +83,9 @@ int main(int argc, char* argv[]) {
 
 	server::Server server(SERVE_PORT);
 	server << "You are now connected to the Vicon datastream!";
+	while (true) {
+		server << "We're just sending lots of messages.";
+	}
 
 	// Connect to Vicon datastream
 	std::string host;
