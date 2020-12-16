@@ -9,4 +9,5 @@ obj
 docs
 
 # websocketpp is pulled from another git repo
-include/websocketpp
+include
+!include/vicon

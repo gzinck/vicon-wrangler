@@ -1,59 +1,67 @@
 #include "Server.h"
-#include <sys/socket.h>
-#include <netinet/in.h> 
 
 using namespace server;
 
-Server::Server(int port) {
-	int serverFD;
-	sockaddr_in address;
-	int addrlen = sizeof(address);
-	int opt = 1;
-
-	// Get a file descriptor for the socket
-	if ((serverFD = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-		std::cerr << "Server could not create socket file descriptor" << std::endl;
-		throw ServerException("Server could not create socket file descriptor");
-	}
-
-	if (setsockopt(serverFD, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
-		std::cerr << "Server could not set the socket options" << std::endl;
-		throw ServerException("Server could not set the socket options");
-	}
-
-	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons(port);
-
-	if (bind(serverFD, (struct sockaddr*) &address, sizeof(address)) < 0) {
-		std::cerr << "Server could not bind the socket" << std::endl;
-		throw ServerException("Server could not bind the socket");
-	}
-
-	if (listen(serverFD, MAX_CONNECTIONS) < 0) {
-		std::cerr << "Server could not listen on socket" << std::endl;
-		throw ServerException("Server could not listen on socket");
-	}
-
-	if ((serverSocket = accept(serverFD, (struct sockaddr*) &address, (socklen_t*)&addrlen)) < 0) {
-		std::cerr << "Server could not accept connections on the socket" << std::endl;
-		throw ServerException("Server could not accept connections on the socket");
-	}
+void Server::onOpen(websocketpp::connection_hdl hdl) {
+	connections.insert(hdl);
+	// endpoint.send(hdl, "Connection successful!", websocketpp::frame::opcode::text);
+	std::cout << "Connection opened" << std::endl;
 }
 
-const Server& Server::operator << (const std::string& s) const {
-	if (send(serverSocket, s.c_str(), s.size(), 0) < 0) {
-		std::cerr << "Server could not send message" << std::endl;
-		throw ServerException("Server could not send message");
-	}
-	return *this;
+void Server::onClose(websocketpp::connection_hdl hdl) {
+	connections.erase(hdl);
+	std::cout << "Connection closed" << std::endl;
 }
 
-const Server& Server::operator << (const double num) const {
-	const std::string s = std::to_string(num);
-	if (send(serverSocket, s.c_str(), s.size(), 0) < 0) {
-		std::cerr << "Server could not send message" << std::endl;
-		throw ServerException("Server could not send message");
+void Server::onFail(websocketpp::connection_hdl hdl) {
+	connections.erase(hdl);
+	std::cout << "Connection failed and closed" << std::endl;
+}
+
+Server::Server() {
+	// Set up logging
+	endpoint.set_error_channels(websocketpp::log::elevel::all);
+	endpoint.set_access_channels(websocketpp::log::alevel::all ^ websocketpp::log::alevel::frame_payload);
+	
+	// Initialize
+	endpoint.init_asio();
+
+	using websocketpp::lib::placeholders::_1;
+	using websocketpp::lib::bind;
+	endpoint.set_open_handler(bind(&Server::onOpen, this, _1));
+	endpoint.set_close_handler(bind(&Server::onClose, this, _1));
+	endpoint.set_fail_handler(bind(&Server::onFail, this, _1));
+}
+
+bool Server::run(int port) {
+	try {
+		endpoint.listen(port);
+	} catch (websocketpp::exception const &e) {
+		std::cout << "Error listening on port " << port << ": " << e.what() << std::endl;
+		return false;
 	}
+
+	websocketpp::lib::error_code ec;
+	endpoint.start_accept();
+	if (ec) {
+		std::cout << "Error starting to accept connections: " << ec.message() << std::endl;
+		return false;
+	}
+
+	try {
+		endpoint.run();
+	} catch (websocketpp::exception const &e) {
+		std::cout << "Error running server: " << e.what() << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
+const Server& Server::operator << (const std::string& s) {
+	for (websocketpp::connection_hdl hdl : connections) {
+		endpoint.send(hdl, s, websocketpp::frame::opcode::text);
+	}
+
 	return *this;
 }

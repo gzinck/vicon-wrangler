@@ -11,6 +11,7 @@
 #include <iostream>
 #include <chrono>
 #include <set>
+#include <websocketpp/common/thread.hpp>
 
 // For sleep() or Sleep()
 #ifdef WIN32
@@ -75,23 +76,13 @@ long long getFrameTime(double latencySecs) {
 	return currTime.time_since_epoch().count() - (long long) (latencySecs * MICRO);
 }
 
-int main(int argc, char* argv[]) {
-	// Set up the server to share our data
-	int servePort;
-	if (argc > 2) servePort = atoi(argv[2]);
-	else servePort = SERVE_PORT;
-
-	server::Server server(SERVE_PORT);
-	server << "You are now connected to the Vicon datastream!";
+void getViconStream(std::string host, server::Server* server) {
 	while (true) {
-		server << "We're just sending lots of messages.";
+		std::cout << "Sending..." << std::endl;
+		*server << "We're just sending lots of messages.";
 	}
 
 	// Connect to Vicon datastream
-	std::string host;
-	if (argc > 1) host = argv[1];
-	//else host = "localhost:801";
-	else host = "192.168.1.105:801";
 	std::cout << "Connecting to " << host << std::endl;
 
 	ViconDataStreamSDK::CPP::Client client;
@@ -140,7 +131,8 @@ int main(int argc, char* argv[]) {
 
 		// Stop waiting, record the time
 		long long frameTime = getFrameTime(client.GetLatencyTotal().Total);
-		server << frameTime << "\n";
+// TODO: FIX THE << OPERATOR
+//		server << frameTime << "\n";
 
 		// std::cout << "Frame number: " << client.GetFrameNumber().FrameNumber << std::endl;
 		// std::cout << "Latency: " << client.GetLatencyTotal().Total << "s" << std::endl;
@@ -159,16 +151,36 @@ int main(int argc, char* argv[]) {
 				for (int markerIndex = 0; markerIndex < numMarkers; markerIndex++) {
 					std::string markerName = client.GetMarkerName(subjectName, markerIndex).MarkerName;
 					Output_GetMarkerGlobalTranslation translation = client.GetMarkerGlobalTranslation(subjectName, markerName);
-
-					server << "Marker " << markerIndex << " - "
-						<< markerName << " ("
-						<< translation.Translation[0] << ", "
-						<< translation.Translation[1] << ", "
-						<< translation.Translation[2] << ")\n";
+// TODO: FIX THE << OPERATOR
+//					server << "Marker " << markerIndex << " - "
+//						<< markerName << " ("
+//						<< translation.Translation[0] << ", "
+//						<< translation.Translation[1] << ", "
+//						<< translation.Translation[2] << ")\n";
 				}
 			}
 		}
 	}
+}
 
+int main(int argc, char* argv[]) {
+	// Get the vicon host
+	std::string host;
+	if (argc > 1) host = argv[1];
+	//else host = "localhost:801";
+	else host = "192.168.1.105:801";
+
+	// Set up the server to share our data
+	int servePort;
+	if (argc > 2) servePort = atoi(argv[2]);
+	else servePort = SERVE_PORT;
+
+	server::Server serv;
+
+	websocketpp::lib::thread t(websocketpp::lib::bind(&getViconStream, host, &serv));
+
+	serv.run(SERVE_PORT);
+
+	t.join();
 	return 0;
 }
