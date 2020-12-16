@@ -11,6 +11,7 @@
 #include <iostream>
 #include <chrono>
 #include <set>
+#include <json/writer.h>
 #include <websocketpp/common/thread.hpp>
 
 // For sleep() or Sleep()
@@ -55,17 +56,17 @@ long long getFrameTime(double latencySecs) {
 }
 
 void getViconStream(std::string host, server::Server* server) {
-	while (true) {
-		*server << "We're just sending lots of messages.";
-	}
+//	while (true) {
+//		*server << "We're just sending lots of messages.";
+//	}
 
 	// Connect to Vicon datastream
-	std::cout << "Connecting to " << host << std::endl;
+	std::cout << "Connecting to Vicon at " << host << std::endl;
 
 	ViconDataStreamSDK::CPP::Client client;
 	Output_Connect cxResult = client.Connect(host);
 	while (cxResult.Result != Result::Success) {
-		std::cout << "Connection failed...";
+		std::cout << "Vicon connection failed...";
 		
 		switch (cxResult.Result) {
 			case Result::InvalidHostName:
@@ -90,7 +91,7 @@ void getViconStream(std::string host, server::Server* server) {
 		cxResult = client.Connect(host);
 	}
 	
-	std::cout << "Connection successful!" << std::endl;
+	std::cout << "Vicon connection successful!" << std::endl;
 
 	client.SetStreamMode(StreamMode::ServerPush);
     client.EnableMarkerData();
@@ -106,37 +107,38 @@ void getViconStream(std::string host, server::Server* server) {
 #endif
 		}
 
+		// Hang on to the frame's information
+		Json::Value frameInfo;
+
 		// Stop waiting, record the time
 		long long frameTime = getFrameTime(client.GetLatencyTotal().Total);
-// TODO: FIX THE << OPERATOR
-//		server << frameTime << "\n";
+		frameInfo["time"] = frameTime;
+		frameInfo["frameno"] = client.GetFrameNumber().FrameNumber;
 
-		// std::cout << "Frame number: " << client.GetFrameNumber().FrameNumber << std::endl;
-		// std::cout << "Latency: " << client.GetLatencyTotal().Total << "s" << std::endl;
-		// std::cout << "Frame rate: " << client.GetFrameRate().FrameRateHz << std::endl;
-		// std::cout << "Frame time: " << frameTime << std::endl;
+		// The following is no longer needed because the frameTime is the
+		// current time minus the latency.
+		// frameInfo["latency"] = client.GetLatencyTotal().Total;
 
 		// Get the subjects we want
 		int numSubjects = client.GetSubjectCount().SubjectCount;
 		for (int subjectIndex = 0; subjectIndex < numSubjects; subjectIndex++) {
 			std::string subjectName = client.GetSubjectName(subjectIndex).SubjectName;
-			std::cout << "Subject name: " << subjectName << std::endl;
 			if (isSubject(subjectName)) {
-				std::cout << "Processing subject: " << subjectName << std::endl;
 				// Collect the marker information
 				int numMarkers = client.GetMarkerCount(subjectName).MarkerCount;
 				for (int markerIndex = 0; markerIndex < numMarkers; markerIndex++) {
 					std::string markerName = client.GetMarkerName(subjectName, markerIndex).MarkerName;
 					Output_GetMarkerGlobalTranslation translation = client.GetMarkerGlobalTranslation(subjectName, markerName);
-// TODO: FIX THE << OPERATOR
-//					server << "Marker " << markerIndex << " - "
-//						<< markerName << " ("
-//						<< translation.Translation[0] << ", "
-//						<< translation.Translation[1] << ", "
-//						<< translation.Translation[2] << ")\n";
+
+					Json::Value coordinates;
+					for (unsigned int dim = 0; dim < 3; dim++) {
+						coordinates.append(translation.Translation[dim]);
+					}
+					frameInfo[subjectName][markerName] = coordinates;
 				}
 			}
 		}
+		*server << frameInfo;
 	}
 }
 

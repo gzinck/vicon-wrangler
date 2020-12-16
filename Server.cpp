@@ -66,7 +66,15 @@ bool Server::run(int port) {
 	return true;
 }
 
-const Server& Server::operator << (const std::string& s) {
+const Server& Server::operator << (const Json::Value& msg) {
+	Json::StreamWriterBuilder builder;
+	builder["commentStyle"] = "None";
+	builder["indentation"] = "";
+	std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+	std::ostringstream os;
+	writer->write(msg, &os);
+	std::string s = os.str();
+
 	lock_guard<mutex> guard(connection_lock);
 	for (websocketpp::connection_hdl hdl : connections) {
 		try {

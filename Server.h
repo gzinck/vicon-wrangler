@@ -2,6 +2,7 @@
 #include <string.h>
 #include <iostream>
 #include <set>
+#include <json/writer.h>
 
 // Include websocketpp
 // The ASIO_STANDALONE define is necessary to use the standalone version of Asio.
@@ -27,9 +28,9 @@ namespace server {
 		 */
 		bool run(int port);
 		/**
-		 * Sends a string to all subscribed entities.
+		 * Sends a JSON string to all subscribed entities.
 		 */
-		const Server& operator << (const std::string&);
+		const Server& operator << (const Json::Value&);
 	private:
 		/**
 		 * Callback when a new connection to the server is opened.
