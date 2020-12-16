@@ -42,28 +42,6 @@ bool isSubject(std::string &value) {
 
 using namespace ViconDataStreamSDK::CPP;
 
-// /**
-//  * Tranform a string representing some fraction of seconds into
-//  * a long representing an integer number of microseconds.
-//  *
-//  * @param str The fraction number of seconds to convert, formatted
-//  * similar to "0.00704355s".
-//  * @return The integer number of microseconds represented (like
-//  * 7043550).
-//  */
-// long long strToMicrosecs(std::string str) {
-// 	str = str.substr(0, str.length() - 1); // remove the "s" at the end
-// 	int decIndex = str.find('.');
-// 	str.erase(decIndex, 1);
-// 	while (str.length() - decIndex < MICROSECS) {
-// 		str.push_back('0');
-// 	}
-// 	if (str.length() - decIndex > MICROSECS) {
-// 		str.erase(decIndex + MICROSECS);
-// 	}
-// 	return std::stol(str);
-// }
-
 /**
  * Gets the time in time_since_epoch (in microseconds), minus
  * the latency provided in seconds.
@@ -78,7 +56,6 @@ long long getFrameTime(double latencySecs) {
 
 void getViconStream(std::string host, server::Server* server) {
 	while (true) {
-		std::cout << "Sending..." << std::endl;
 		*server << "We're just sending lots of messages.";
 	}
 

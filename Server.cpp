@@ -1,19 +1,27 @@
 #include "Server.h"
 
+// Use namespace for the mutex to ensure threads don't all try
+// to access the list of connections at the same time.
+using websocketpp::lib::mutex;
+using websocketpp::lib::lock_guard;
+
 using namespace server;
 
 void Server::onOpen(websocketpp::connection_hdl hdl) {
+	lock_guard<mutex> guard(connection_lock);
 	connections.insert(hdl);
 	// endpoint.send(hdl, "Connection successful!", websocketpp::frame::opcode::text);
 	std::cout << "Connection opened" << std::endl;
 }
 
 void Server::onClose(websocketpp::connection_hdl hdl) {
+	lock_guard<mutex> guard(connection_lock);
 	connections.erase(hdl);
 	std::cout << "Connection closed" << std::endl;
 }
 
 void Server::onFail(websocketpp::connection_hdl hdl) {
+	lock_guard<mutex> guard(connection_lock);
 	connections.erase(hdl);
 	std::cout << "Connection failed and closed" << std::endl;
 }
@@ -59,8 +67,13 @@ bool Server::run(int port) {
 }
 
 const Server& Server::operator << (const std::string& s) {
+	lock_guard<mutex> guard(connection_lock);
 	for (websocketpp::connection_hdl hdl : connections) {
-		endpoint.send(hdl, s, websocketpp::frame::opcode::text);
+		try {
+			endpoint.send(hdl, s, websocketpp::frame::opcode::text);
+		} catch (websocketpp::exception const &e) {
+			std::cout << "Error sending message: " << e.what() << std::endl;
+		}
 	}
 
 	return *this;
