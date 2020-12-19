@@ -11,7 +11,7 @@
 #include <iostream>
 #include <chrono>
 #include <set>
-#include <json/writer.h>
+#include <json/value.h>
 #include <websocketpp/common/thread.hpp>
 
 // For sleep() or Sleep()
@@ -109,6 +109,7 @@ void getViconStream(std::string host, server::Server* server) {
 
 		// Hang on to the frame's information
 		Json::Value frameInfo;
+		frameInfo["type"] = "frameInfo";
 
 		// Stop waiting, record the time
 		long long frameTime = getFrameTime(client.GetLatencyTotal().Total);

@@ -3,12 +3,15 @@
 #include <iostream>
 #include <set>
 #include <json/writer.h>
+#include <exception>
 
 // Include websocketpp
 // The ASIO_STANDALONE define is necessary to use the standalone version of Asio.
 #define ASIO_STANDALONE
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
+
+#include "MessageHandler.h"
 
 namespace server {
 	typedef websocketpp::server<websocketpp::config::asio> sock_serv;
@@ -37,6 +40,10 @@ namespace server {
 		 */
 		void onOpen(websocketpp::connection_hdl hdl);
 		/**
+		 * Callback when a message is received by the server.
+		 */
+		void onMessage(websocketpp::connection_hdl, sock_serv::message_ptr);
+		/**
 		 * Callback when a connection to the server is closed.
 		 */
 		void onClose(websocketpp::connection_hdl hdl);
@@ -45,6 +52,10 @@ namespace server {
 		 */
 		void onFail(websocketpp::connection_hdl hdl);
 
+		/**
+		 * The handler for when messages are received by the server.
+		 */
+		messages::Handler messageHandler;
 		/**
 		 * The set of connections attached to the server.
 		 */
@@ -61,11 +72,11 @@ namespace server {
 		websocketpp::lib::mutex connection_lock;
 	};
 
-	class ServerException {
+	class ServerException : public std::exception {
 	public:
-		ServerException(std::string message) : msg(message) {};
+		ServerException(const std::string& message) : msg(message) {};
 		~ServerException() {};
-		std::string description() { return msg; }
+		const char* what() const throw() { return msg.c_str(); }
 	private:
 		std::string msg;
 	};

@@ -1,4 +1,5 @@
 #include "Server.h"
+#include <json/reader.h>
 
 // Use namespace for the mutex to ensure threads don't all try
 // to access the list of connections at the same time.
@@ -12,6 +13,17 @@ void Server::onOpen(websocketpp::connection_hdl hdl) {
 	connections.insert(hdl);
 	// endpoint.send(hdl, "Connection successful!", websocketpp::frame::opcode::text);
 	std::cout << "Connection opened" << std::endl;
+}
+
+void Server::onMessage(websocketpp::connection_hdl hdl, sock_serv::message_ptr msgPtr) {
+	std::cout << "Message received" << std::endl;
+	std::string msgStr = msgPtr->get_payload();
+
+	std::stringstream sstr(msgStr);
+	Json::Value msg;
+	sstr >> msg;
+
+	*this << messageHandler.handleMessage(msg);
 }
 
 void Server::onClose(websocketpp::connection_hdl hdl) {
@@ -35,10 +47,15 @@ Server::Server() {
 	endpoint.init_asio();
 
 	using websocketpp::lib::placeholders::_1;
+	using websocketpp::lib::placeholders::_2;
 	using websocketpp::lib::bind;
+
 	endpoint.set_open_handler(bind(&Server::onOpen, this, _1));
+	endpoint.set_message_handler(bind(&Server::onMessage, this, _1, _2));
 	endpoint.set_close_handler(bind(&Server::onClose, this, _1));
 	endpoint.set_fail_handler(bind(&Server::onFail, this, _1));
+
+	endpoint.set_reuse_addr(true);
 }
 
 bool Server::run(int port) {
