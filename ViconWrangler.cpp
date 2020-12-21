@@ -30,7 +30,9 @@
 #endif
 
 /** The subjects to retreive from the Vicon datastream */
-std::set<std::string> subjects = {"Active Wand (Origin Tracking)"};
+std::set<std::string> subjects = {
+	"Active Wand (Origin Tracking)",
+};
 
 /**
  * Checks if the subject is one we want to track.
@@ -124,7 +126,11 @@ void getViconStream(std::string host, server::Server* server) {
 		int numSubjects = client.GetSubjectCount().SubjectCount;
 		for (int subjectIndex = 0; subjectIndex < numSubjects; subjectIndex++) {
 			std::string subjectName = client.GetSubjectName(subjectIndex).SubjectName;
-			if (isSubject(subjectName)) {
+
+			// Uncomment below if statement to only transmit specific
+			// subjects. Right now, all of them are transmitted.
+			if (true) {
+			// if (isSubject(subjectName)) {
 				// Collect the marker information
 				int numMarkers = client.GetMarkerCount(subjectName).MarkerCount;
 				for (int markerIndex = 0; markerIndex < numMarkers; markerIndex++) {
@@ -139,6 +145,29 @@ void getViconStream(std::string host, server::Server* server) {
 				}
 			}
 		}
+
+		// Get labelled markers
+		unsigned int numMarkers = client.GetLabeledMarkerCount().MarkerCount;
+		for(int markerIndex = 0; markerIndex < numMarkers; ++markerIndex) {
+			Output_GetLabeledMarkerGlobalTranslation translation = client.GetLabeledMarkerGlobalTranslation(markerIndex);
+			Json::Value coordinates;
+			for (unsigned int dim = 0; dim < 3; ++dim) {
+				coordinates.append(translation.Translation[dim]);
+			}
+			frameInfo["labeled"][markerIndex] = coordinates;
+		}
+
+		// Get unlabelled markers
+		numMarkers = client.GetUnlabeledMarkerCount().MarkerCount;
+		for(int markerIndex = 0; markerIndex < numMarkers; ++markerIndex) {
+			Output_GetUnlabeledMarkerGlobalTranslation translation = client.GetUnlabeledMarkerGlobalTranslation(markerIndex);
+			Json::Value coordinates;
+			for (unsigned int dim = 0; dim < 3; ++dim) {
+				coordinates.append(translation.Translation[dim]);
+			}
+			frameInfo["unlabeled"][markerIndex] = coordinates;
+		}
+
 		*server << frameInfo;
 	}
 }
